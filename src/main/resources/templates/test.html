@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Test</title>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+
+<body>
+<div>
+    <!-- 进度条显示 -->
+    <div class="progress" th:if="${ratio != null}">
+        <p>Progress: <span id="ratio" th:text="${ratio}"></span></p>
+        <div class="progressBar">
+            <div id="bar" th:style="'width: ' + ${ratio} + '%; background-color: lightblue;'">
+                &nbsp;
+            </div>
+        </div>
+    </div>
+    <button id="submitButton">Submit</button>
+</div>
+
+
+</body>
+
+<script th:inline="javascript">
+    $(document).ready(function () {
+        $('#submitButton').click(function () {
+            let fileName = "testFile";
+            let formData = new FormData();
+            formData.append('file', fileName);
+
+            $.ajax({
+                url: '/upload',
+                type: 'POST',
+                processData: false,
+                contentType: false,
+                data: formData
+            }).then(emitterId => {
+                let eventSource = new EventSource('/progress/' + emitterId);
+
+                eventSource.onopen = function () {
+                    console.log('EventSource connected');
+                };
+
+                eventSource.onmessage = function (event) {
+                    let ratio = event.data;
+
+                    if (ratio % 1 === 0) {
+                        $('#ratio').text(ratio + '%');
+                    } else {
+                        $('#ratio').text(ratio);
+                        eventSource.close();
+                        console.log('EventSource closed');
+                    }
+                    $('#bar').css('width', ratio + '%');
+                };
+
+                eventSource.onerror = function () {
+                    console.log('EventSource error');
+                    eventSource.close();
+                };
+
+            });
+        });
+    });
+
+</script>
+
+</html>
